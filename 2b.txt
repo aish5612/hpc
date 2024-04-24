@@ -1,0 +1,93 @@
+#include <iostream>
+#include <omp.h>
+
+void merge(int arr[], int l, int m, int r) {
+    int n1 = m - l + 1;
+    int n2 = r - m;
+    int L[n1], R[n2];
+
+    // Copy data to temp arrays L[] and R[]
+    for (int i = 0; i < n1; i++)
+        L[i] = arr[l + i];
+    for (int j = 0; j < n2; j++)
+        R[j] = arr[m + 1 + j];
+
+    // Merge the temp arrays back into arr[l..r]
+    int i = 0; // Initial index of first subarray
+    int j = 0; // Initial index of second subarray
+    int k = l; // Initial index of merged subarray
+    while (i < n1 && j < n2) {
+        if (L[i] <= R[j]) {
+            arr[k] = L[i];
+            i++;
+        }
+        else {
+            arr[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    // Copy the remaining elements of L[], if there are any
+    while (i < n1) {
+        arr[k] = L[i];
+        i++;
+        k++;
+    }
+
+    // Copy the remaining elements of R[], if there are any
+    while (j < n2) {
+        arr[k] = R[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(int arr[], int l, int r) {
+    if (l < r) {
+        int m = l + (r - l) / 2;
+        // Parallelize the calls to mergeSort
+        #pragma omp task
+        mergeSort(arr, l, m);
+        #pragma omp task
+        mergeSort(arr, m + 1, r);
+        #pragma omp taskwait
+        merge(arr, l, m, r);
+    }
+}
+
+int main() {
+    int n;
+    std::cout << "Enter the number of elements: ";
+    std::cin >> n;
+
+    int* arr = new int[n];
+    std::cout << "Enter " << n << " elements: ";
+    for (int i = 0; i < n; i++)
+        std::cin >> arr[i];
+
+    std::cout << "Given array is: ";
+    for (int i = 0; i < n; i++)
+        std::cout << arr[i] << " ";
+    std::cout << std::endl;
+
+    double start = omp_get_wtime();
+    // Parallelize the initial call to mergeSort
+    #pragma omp parallel
+    {
+        #pragma omp single nowait
+        mergeSort(arr, 0, n - 1);
+    }
+    double stop = omp_get_wtime();
+
+    std::cout << "Sorted array is: ";
+    for (int i = 0; i < n; i++)
+        std::cout << arr[i] << " ";
+    std::cout << std::endl;
+
+    std::cout << "Time taken: " << stop - start << " seconds" << std::endl;
+
+    delete[] arr;
+
+    return 0;
+}
